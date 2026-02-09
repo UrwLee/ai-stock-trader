@@ -142,11 +142,15 @@ class EnhancedStockPicker:
         name = quote.get('name', symbol)
         
         # 获取政策信息
-        policy_info = self.policy_map.get(symbol, {
-            "policy": "一般",
-            "score": 50,
-            "desc": "基本面一般，无明显亮点"
-        })
+        if symbol in self.policy_map:
+            policy_info = self.policy_map[symbol]
+        else:
+            # 默认值
+            policy_info = {
+                "policy": "一般",
+                "score": 50,
+                "desc": f"{symbol}，基本面一般，无明显催化剂"
+            }
         
         # 1. 技术分析
         tech_score, tech_analysis = self._analyze_technical(price, change_pct, volume, high, low)
@@ -346,7 +350,12 @@ class EnhancedStockPicker:
         
         # 通用风险
         risks.append("股市有风险，投资需谨慎")
-        risks.append("本分析仅供参考，不构成投资建议")
+        # 确保风险是字符串
+        if risks:
+            pass
+        else:
+            risks.append("股市有风险，投资需谨慎")
+            risks.append("本分析仅供参考，不构成投资建议")
         
         return "；".join(risks)
     
