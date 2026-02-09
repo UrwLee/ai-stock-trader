@@ -202,7 +202,7 @@ elif page == "🎯 AI选股":
     st.subheader("🎯 AI评分")
     method = st.radio(
         "评分方法",
-        ["comprehensive"", "momentum", "trend"],
+        ["comprehensive", "momentum", "trend"],
         horizontal=True,
         index=0
     )
