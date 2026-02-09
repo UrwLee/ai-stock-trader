@@ -223,14 +223,16 @@ if page == "🏠 首页":
                         # 根据涨跌选择样式
                         change_pct = quote['change_pct']
                         change_color = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
+                        change_text_color = "#00ff00" if change_pct > 0 else "#ff4444" if change_pct < 0 else "#b0b0b0"
                         
                         with col:
                             with st.container():
+                                change_display = f"{change_color} {change_pct:+.2f}%"
                                 st.markdown(f"""
                                 <div class="stock-card">
                                     <strong style="color: #ffffff;">{symbol}</strong> <span style="color: #b0b0b0;">{quote.get('name', '-')}</span><br>
                                     <strong style="color: #00d9ff; font-size: 18px;">¥{quote['close']:.2f}</strong><br>
-                                    <span style="color: #00ff00;">{change_color} {change_pct:+.2f}%</span>
+                                    <span style="color: {change_text_color};">{change_display}</span>
                                 </div>
                                 """, unsafe_allow_html=True)
                         
@@ -361,7 +363,7 @@ elif page == "🎯 AI选股":
     with c2:
         max_price = st.number_input("最高价 (¥)", value=1000.0, step=10.0)
     with c3:
-        max_change = st.slider("最大跌幅 (%)", -1, -50, -50)
+        max_change = st.slider("最大跌幅 (%)", -50, -1, -10)
     
     # 开始选股
     if st.button("🚀 开始AI选股", type="primary", use_container_width=True):
