@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.data.stock_api import StockDataAPI
 from src.strategies.ai_stock_picker import AIStockPicker
+from src.strategies.enhanced_stock_picker import EnhancedStockPicker, MARKET_CONTEXT
 from src.utils.risk_manager import RiskManager
 
 # 页面配置

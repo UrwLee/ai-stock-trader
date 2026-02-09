@@ -1,0 +1,9 @@
+[server]
+headless = true
+port = 8501
+
+[runner]
+magic = true
+
+[browser]
+gatherUsageStats = false
