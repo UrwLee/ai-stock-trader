@@ -475,7 +475,7 @@ elif page == "🎯 AI选股":
                     c1, c2, c3, c4 = st.columns(4)
                     c1.metric("价格", f"¥{stock.price:.2f}")
                     c2.metric("涨跌", f"{stock.change_pct:+.2f}%")
-                    c3.metric("技术分", f"{stock.trend_score:.0f}")
+                    c3.metric("技术分", f"{stock.technical_score:.0f}")
                     c4.metric("政策分", f"{stock.policy_score:.0f}")
                     
                     st.markdown(f"**{stock.recommendation}**")
