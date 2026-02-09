@@ -244,8 +244,8 @@ if page == "🏠 首页":
                         col = cols[idx % 4]
                         
                         change_pct = quote['change_pct']
-                        change_color = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
-                        change_text_color = "#00ff00" if change_pct > 0 else "#ff4444" if change_pct < 0 else "#b0b0b0"
+                        change_color = "🔴" if change_pct > 0 else "🟢" if change_pct < 0 else "⚪"
+                        change_text_color = "#ff4444" if change_pct > 0 else "#00ff00" if change_pct < 0 else "#b0b0b0"
                         
                         with col:
                             with st.container():
@@ -605,7 +605,8 @@ elif page == "💼 模拟炒股":
             
             if sell_symbol:
                 symbol = sell_symbol.split("(")[0]
-                pos = account['positions'][symbol]
+                symbol = symbol.strip()
+                    pos = account['positions'].get(symbol)
                 current_price = pos.get('current_price', pos['cost_price'])
                 
                 c1, c2 = st.columns(2)
