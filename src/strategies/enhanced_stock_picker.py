@@ -222,7 +222,7 @@ class EnhancedStockPicker:
             analysis_parts.append(f"今日下跌{change_pct:.1f}%，存在低吸机会")
         
         # 振幅分析
-        daily_range = (high - low) / low * 100
+        daily_range = (high - low) / low * 100 if low > 0 else 0
         if daily_range > 5:
             score += 10
             analysis_parts.append(f"日内振幅{daily_range:.1f}%，交易活跃")
