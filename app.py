@@ -481,7 +481,7 @@ elif page == "🎯 AI选股":
                     st.markdown(f"**{stock.recommendation}**")
                     
                     # 分析
-                    st.markdown(f"📊 {stock.analysis[:200]}...")
+                    st.markdown(f"📊 {stock.analysis}")
                     
                     # 风险
                     if stock.risks:
