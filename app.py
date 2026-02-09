@@ -653,19 +653,22 @@ elif page == "💼 模拟炒股":
             positions_data.append({
                 '代码': symbol,
                 '股数': pos['shares'],
-                '成本价': f"¥{pos['cost_price']:.2f}",
-                '当前价': f"¥{current_price:.2f}",
-                '市值': f"¥{market_value:,.0f}",
-                '盈亏': f"{profit_pct:+.2f}%"
+                '成本价': pos['cost_price'],
+                '当前价': current_price,
+                '市值': market_value,
+                '盈亏': profit_pct
             })
         
         df_positions = pd.DataFrame(positions_data).set_index('代码')
         
         st.dataframe(
             df_positions.style.format({
-                '市值': '{:.0f}',
+                '成本价': '¥{:.2f}',
+                '当前价': '¥{:.2f}',
+                '市值': '¥{:.0f}',
+                '盈亏': '{:+.2f}%'
             }).map(
-                lambda x: 'color: #00ff00' if '+' in str(x) else ('color: #ff4444' if '-' in str(x) else 'color: #ffffff'),
+                lambda x: 'color: #00ff00' if isinstance(x, (int, float)) and x > 0 else ('color: #ff4444' if isinstance(x, (int, float)) and x < 0 else 'color: #ffffff'),
                 subset=['盈亏']
             ),
             width='stretch'
