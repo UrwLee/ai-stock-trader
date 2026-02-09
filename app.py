@@ -606,7 +606,7 @@ elif page == "💼 模拟炒股":
             if sell_symbol:
                 symbol = sell_symbol.split("(")[0]
                 symbol = symbol.strip()
-                    pos = account['positions'].get(symbol)
+                pos = account['positions'].get(symbol)
                 current_price = pos.get('current_price', pos['cost_price'])
                 
                 c1, c2 = st.columns(2)
