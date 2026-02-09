@@ -414,6 +414,8 @@ elif page == "📈 实时行情":
 elif page == "🎯 AI选股":
     st.header("🎯 AI智能选股")
     
+    st.info("AI结合宏观分析、历史数据进行趋势预测")
+    
     # 市场背景 - 默认展开
     with st.expander("📊 当前市场背景 (2026年2月)", expanded=True):
         st.markdown("""
@@ -470,22 +472,47 @@ elif page == "🎯 AI选股":
             st.success(f"选出 {len(final_results)} 只股票")
             
             for i, stock in enumerate(final_results, 1):
-                with st.expander(f"{i}. {stock.symbol} {stock.name} ({stock.final_score:.0f}分)", expanded=i<=3):
+                with st.expander(f"{i}. {stock.symbol} {stock.name} ({stock.final_score:.0f}分)", expanded=True):
                     # 基础信息
                     c1, c2, c3, c4 = st.columns(4)
                     c1.metric("价格", f"¥{stock.price:.2f}")
                     c2.metric("涨跌", f"{stock.change_pct:+.2f}%")
                     c3.metric("技术分", f"{stock.technical_score:.0f}")
-                    c4.metric("政策分", f"{stock.policy_score:.0f}")
+                    c4.metric("综合分", f"{stock.final_score:.0f}")
                     
-                    st.markdown(f"**{stock.recommendation}**")
+                    st.markdown(f"**{stock.recommendation}** | {stock.technical_signal}")
                     
-                    # 分析
-                    st.markdown(f"📊 {stock.fundamentals_analysis}")
+                    st.markdown("---")
                     
-                    # 风险
-                    if stock.risks:
-                        st.warning(stock.risks[0])
+                    # 投资逻辑
+                    st.markdown(f"### 💡 投资逻辑")
+                    st.markdown(f"{stock.investment_logic}")
+                    
+                    st.markdown("")
+                    
+                    # 技术分析
+                    st.markdown(f"### 📈 技术分析")
+                    st.markdown(f"{stock.technical_analysis}")
+                    
+                    st.markdown("")
+                    
+                    # 宏观分析
+                    st.markdown(f"### 🏛️ 宏观分析")
+                    st.markdown(f"{stock.macro_analysis}")
+                    
+                    st.markdown("")
+                    
+                    # 基本面分析
+                    st.markdown(f"### 📊 基本面分析")
+                    st.markdown(f"{stock.fundamentals_analysis}")
+                    
+                    st.markdown("")
+                    
+                    # 风险提示
+                    st.markdown(f"### ⚠️ 风险提示")
+                    risk_list = stock.risk_analysis.split("；") if stock.risk_analysis else ["股市有风险"]
+                    for risk in risk_list[:3]:
+                        st.markdown(f"- {risk}")
 
 
 # ========== 页面3: 模拟炒股 ==========
@@ -572,31 +599,32 @@ elif page == "💼 模拟炒股":
             sell_choice = st.selectbox("选择", sell_options, key="sell_sel")
             
             if sell_choice:
-                symbol = sell_choice.split("(")[0]
-                pos = account['positions'][symbol]
-                current_price = pos.get('current_price', pos['cost_price'])
-                
-                st.write(f"当前价: ¥{current_price:.2f}")
-                sell_shares = st.number_input("股数", 1, pos['shares'], pos['shares'], key="sell_n")
-                
-                if st.button("🟢 卖出", use_container_width=True):
-                    revenue = sell_shares * current_price
+                symbol = sell_choice.split("(")[0].strip()
+                pos = account['positions'].get(symbol)
+                if pos:
+                    current_price = pos.get('current_price', pos['cost_price'])
                     
-                    if sell_shares >= pos['shares']:
-                        del account['positions'][symbol]
-                    else:
-                        pos['shares'] -= sell_shares
+                    st.write(f"当前价: ¥{current_price:.2f}")
+                    sell_shares = st.number_input("股数", 1, pos['shares'], pos['shares'], key="sell_n")
                     
-                    account['cash'] += revenue
-                    account['history'].append({
-                        'time': datetime.now().strftime("%H:%M:%S"),
-                        'action': 'SELL',
-                        'symbol': symbol,
-                        'shares': sell_shares,
-                        'price': current_price
-                    })
-                    st.success(f"卖出 {symbol} {sell_shares}股")
-                    st.rerun()
+                    if st.button("🟢 卖出", use_container_width=True):
+                        revenue = sell_shares * current_price
+                        
+                        if sell_shares >= pos['shares']:
+                            del account['positions'][symbol]
+                        else:
+                            pos['shares'] -= sell_shares
+                        
+                        account['cash'] += revenue
+                        account['history'].append({
+                            'time': datetime.now().strftime("%H:%M:%S"),
+                            'action': 'SELL',
+                            'symbol': symbol,
+                            'shares': sell_shares,
+                            'price': current_price
+                        })
+                        st.success(f"卖出 {symbol} {sell_shares}股")
+                        st.rerun()
         else:
             st.info("暂无持仓")
     
