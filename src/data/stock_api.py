@@ -96,9 +96,10 @@ class StockDataAPI:
             return pd.DataFrame()
 
     def _get_common_stocks(self) -> pd.DataFrame:
-        """获取常用股票池（免费接口）"""
+        """获取常用股票池（免费接口）- 扩展版"""
         # 常用指数成分股 + 热门股票
         common_codes = {
+            # 热门股
             "600519": "贵州茅台",
             "000001": "平安银行",
             "600036": "招商银行",
@@ -114,6 +115,48 @@ class StockDataAPI:
             "601012": "隆基绿能",
             "600030": "中信证券",
             "300059": "东方财富",
+            # 银行股
+            "601229": "上海银行",
+            "600919": "江苏银行",
+            "002142": "宁波银行",
+            "600908": "无锡银行",
+            "600928": "西安银行",
+            # 券商股
+            "600837": "海通证券",
+            "600999": "招商证券",
+            "601066": "中信建投",
+            "601788": "光大证券",
+            "600109": "国金证券",
+            # 医药股
+            "600436": "片仔癀",
+            "000513": "丽珠集团",
+            "600055": "万东医疗",
+            "002007": "华兰生物",
+            "000566": "海南海药",
+            # 科技股
+            "002410": "广联达",
+            "300033": "同花顺",
+            "300368": "涪陵榨菜",  # 修正
+            "002230": "昆仑万维",
+            "300124": "汇川技术",
+            # 消费股
+            "000858": "五粮液",
+            "000568": "泸州老窖",
+            "600809": "山西汾酒",
+            "000596": "古井贡酒",
+            "600132": "重庆啤酒",
+            # 新能源
+            "002129": "中环股份",
+            "600274": "天顺风能",
+            "300014": "亿纬锂能",
+            "002709": "天赐材料",
+            "603799": "华友钴业",
+            # 地产
+            "600048": "保利地产",
+            "600383": "金地集团",
+            "000002": "万  科Ａ",
+            "600606": "绿地控股",
+            "600340": "华夏幸福",
         }
 
         data = []
@@ -127,6 +170,54 @@ class StockDataAPI:
             })
 
         return pd.DataFrame(data)
+
+    def get_a_stock_list(self) -> List[Dict[str, str]]:
+        """
+        获取完整的A股股票列表（用于AI选股）
+        
+        Returns:
+            股票列表 [{symbol, name, market}, ...]
+        """
+        if self.data_source == "tushare":
+            # 使用Tushare获取完整列表
+            try:
+                df = self.pro.stock_basic(list_status='L')
+                if df is not None and not df.empty:
+                    return df[['ts_code', 'symbol', 'name']].to_dict('records')
+            except Exception as e:
+                logger.error(f"Tushare获取A股列表失败: {e}")
+        
+        # 免费接口：使用扩展的常用股票池
+        return self._get_common_stocks().to_dict('records')
+
+    def get_hot_stocks(self, category: str = "all") -> List[str]:
+        """
+        获取热门股票代码列表
+        
+        Args:
+            category: 分类 ('all', 'bank', 'medicine', 'tech', 'consumer', 'energy')
+            
+        Returns:
+            股票代码列表
+        """
+        stocks = self._get_common_stocks()
+        
+        category_map = {
+            "all": None,
+            "bank": ["平安银行", "招商银行", "工商银行", "中国银行", "浦发银行"],
+            "medicine": ["恒瑞医药", "片仔癀", "爱尔眼科", "丽珠集团", "华兰生物"],
+            "tech": ["宁德时代", "比亚迪", "立讯精密", "隆基绿能", "广联达"],
+            "consumer": ["贵州茅台", "五粮液", "格力电器", "古井贡酒", "重庆啤酒"],
+            "energy": ["中国石油", "中国石化", "海通证券", "华友钴业", "天赐材料"],
+        }
+        
+        keywords = category_map.get(category)
+        if keywords is None:
+            return stocks['symbol'].tolist()
+        
+        # 根据名称过滤
+        filtered = stocks[stocks['name'].apply(lambda x: any(k in x for k in keywords))]
+        return filtered['symbol'].tolist()
 
     def get_daily_price(self, symbol: str, start_date: str = None,
                         end_date: str = None, adjust: str = "qfq") -> pd.DataFrame:

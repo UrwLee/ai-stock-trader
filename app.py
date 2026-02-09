@@ -23,7 +23,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.data.stock_api import StockDataAPI
 from src.strategies.ai_stock_picker import AIStockPicker
 from src.utils.risk_manager import RiskManager
-from src.utils.technical_analysis import TechnicalAnalyzer
 
 # 页面配置
 st.set_page_config(
@@ -44,6 +43,20 @@ st.markdown("""
     .main {
         padding: 20px;
     }
+    .stock-card {
+        background-color: #f0f2f6;
+        padding: 15px;
+        border-radius: 10px;
+        margin: 5px;
+    }
+    .up-stock {
+        background-color: #e6ffe6;
+        border-left: 4px solid #00cc00;
+    }
+    .down-stock {
+        background-color: #ffe6e6;
+        border-left: 4px solid #cc0000;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -58,207 +71,262 @@ with st.sidebar:
     
     page = st.selectbox(
         "选择功能",
-        ["📈 实时行情", "🎯 AI选股", "💼 组合管理", "⚙️ 设置"]
+        ["🏠 首页", "📈 实时行情", "🎯 AI选股", "💼 组合管理", "⚙️ 设置"]
     )
     
     st.markdown("---")
     
     st.info("💡 **提示:**")
     st.markdown("""
-    - 免费使用，无需配置
-    - 完整功能需Tushare Token
-    - 实盘交易需券商账户
+    - 首页自动展示热门板块
+    - AI选股从全部A股筛选
+    - 点击股票查看详情
     """)
 
 
+# ========== 页面0: 首页 ==========
+if page == "🏠 首页":
+    st.header("🏠 市场概览")
+
+    api = StockDataAPI(data_source="sina")
+    
+    # 获取所有股票
+    all_stocks = api.get_a_stock_list()
+    
+    # 按板块分类展示
+    tabs = st.tabs(["🔥 全部", "🏦 银行", "💊 医药", "💻 科技", "🚗 新能源", "🍺 消费"])
+    
+    categories = {
+        "🔥 全部": "all",
+        "🏦 银行": "bank",
+        "💊 医药": "medicine",
+        "💻 科技": "tech",
+        "🚗 新能源": "energy",
+        "🍺 消费": "consumer",
+    }
+    
+    for tab, (name, category) in zip(tabs, categories.items()):
+        with tab:
+            # 获取该板块股票
+            if category == "all":
+                stock_symbols = [s['symbol'] for s in all_stocks[:50]]  # 显示前50只
+            else:
+                stock_symbols = api.get_hot_stocks(category)
+            
+            if stock_symbols:
+                # 获取实时行情
+                quotes = api.get_realtime_quote(stock_symbols[:30])  # 限制30只
+                
+                if quotes:
+                    # 创建股票卡片网格
+                    cols = st.columns(4)
+                    idx = 0
+                    
+                    for symbol, quote in quotes.items():
+                        col = cols[idx % 4]
+                        
+                        # 根据涨跌选择样式
+                        change_pct = quote['change_pct']
+                        change_color = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
+                        bg_class = "up-stock" if change_pct > 0 else "down-stock"
+                        
+                        with col:
+                            with st.container():
+                                st.markdown(f"""
+                                <div class="stock-card {bg_class}">
+                                    <strong>{symbol}</strong> {quote.get('name', '-')}<br>
+                                    <strong style="font-size: 20px;">¥{quote['close']:.2f}</strong><br>
+                                    {change_color} {change_pct:+.2f}%
+                                </div>
+                                """, unsafe_allow_html=True)
+                                
+                                # 查看详情按钮
+                                if st.button(f"📊 {symbol}", key=f"btn_{symbol}"):
+                                    st.session_state[f"selected_{symbol}"] = True
+                        
+                        idx += 1
+                        
+                        if idx >= 4:
+                            idx = 0
+                    
+                    # 显示统计信息
+                    if quotes:
+                        up = sum(1 for q in quotes.values() if q['change_pct'] > 0)
+                        down = sum(1 for q in quotes.values() if q['change_pct'] < 0)
+                        st.markdown(f"**{name}**: 🟢 {up}只 | 🔴 {down}只 | 共{len(quotes)}只")
+                else:
+                    st.warning(f"未能获取{name}数据")
+
+
 # ========== 页面1: 实时行情 ==========
-if page == "📈 实时行情":
+elif page == "📈 实时行情":
     st.header("📈 实时行情")
     
-    # 输入区域
-    col1, col2 = st.columns([4, 1])
+    api = StockDataAPI(data_source="sina")
+    
+    # 快速选择
+    st.subheader("📋 自选股票")
+    
+    col1, col2 = st.columns([3, 1])
     with col1:
-        symbols_input = st.text_input(
-            "输入股票代码 (逗号分隔)",
-            value="600519,000001,300750,002594,600036"
+        # 获取所有股票
+        all_stocks = api.get_a_stock_list()
+        stock_options = [f"{s['symbol']} - {s['name']}" for s in all_stocks[:100]]
+        
+        selected = st.multiselect(
+            "选择股票 (可搜索)",
+            options=stock_options,
+            default=stock_options[:5] if stock_options else [],
+            help="输入股票代码或名称搜索"
         )
+    
     with col2:
         st.write("")
         st.write("")
-        query_btn = st.button("🔍 查询", use_container_width=True)
+        if st.button("🔄 刷新行情", type="primary"):
+            st.rerun()
     
-    # 解析并查询
-    if symbols_input:
-        symbols = [s.strip() for s in symbols_input.split(",") if s.strip()]
+    # 解析选中的股票
+    if selected:
+        symbols = [s.split(" - ")[0] for s in selected]
         
-        if symbols:
-            api = StockDataAPI(data_source="sina")
-            quotes = api.get_realtime_quote(symbols)
+        # 获取行情
+        quotes = api.get_realtime_quote(symbols)
+        
+        if quotes:
+            # 转换为DataFrame
+            data = []
+            for symbol, quote in quotes.items():
+                data.append({
+                    "代码": symbol,
+                    "名称": quote.get('name', '-'),
+                    "当前价": quote['close'],
+                    "涨跌": quote['change'],
+                    "涨跌幅": f"{quote['change_pct']:+.2f}%",
+                    "最高": quote['high'],
+                    "最低": quote['low'],
+                    "成交量": f"{quote['volume']/10000:.0f}万",
+                })
             
-            if quotes:
-                # 转换数据
-                data = []
-                for symbol, quote in quotes.items():
-                    data.append({
-                        "代码": symbol,
-                        "名称": quote.get('name', '-'),
-                        "当前价": quote['close'],
-                        "涨跌": quote['change'],
-                        "涨跌幅": f"{quote['change_pct']:+.2f}%",
-                        "最高": quote['high'],
-                        "最低": quote['low'],
-                        "成交量": f"{quote['volume']/10000:.0f}万",
-                    })
-                
-                df = pd.DataFrame(data)
-                
-                # 设置索引
-                df = df.set_index("代码")
-                
-                # 显示数据
-                st.dataframe(
-                    df.style.format({
-                        "当前价": "{:.2f}",
-                        "涨跌": "{:+.2f}",
-                        "最高": "{:.2f}",
-                        "最低": "{:.2f}",
-                    }).applymap(
-                        lambda x: 'color: green' if isinstance(x, str) and '+' in x else ('color: red' if isinstance(x, str) and '-' in x else ''),
-                        subset=["涨跌幅"]
-                    ),
-                    use_container_width=True
-                )
-                
-                # 涨跌统计
-                up_count = sum(1 for q in quotes.values() if q['change_pct'] > 0)
-                down_count = sum(1 for q in quotes.values() if q['change_pct'] < 0)
-                
-                col1, col2, col3 = st.columns(3)
-                col1.metric("上涨", f"{up_count}只", delta=f"{up_count}", delta_color="normal")
-                col2.metric("下跌", f"{down_count}只", delta=f"-{down_count}", delta_color="inverse")
-                col3.metric("总股票", f"{len(quotes)}只")
-                
-            else:
-                st.warning("⚠️ 未获取到数据，请检查股票代码是否正确")
-        else:
-            st.warning("⚠️ 请输入股票代码")
+            df = pd.DataFrame(data).set_index("代码")
+            
+            # 显示涨跌统计
+            up_count = sum(1 for q in quotes.values() if q['change_pct'] > 0)
+            down_count = sum(1 for q in quotes.values() if q['change_pct'] < 0)
+            
+            c1, c2, c3 = st.columns(3)
+            c1.metric("上涨", f"{up_count}只", delta=f"{up_count}", delta_color="normal")
+            c2.metric("下跌", f"{down_count}只", delta=f"-{down_count}", delta_color="inverse")
+            c3.metric("总股票", f"{len(quotes)}只")
+            
+            # 显示表格
+            st.dataframe(
+                df.style.format({
+                    "当前价": "{:.2f}",
+                    "涨跌": "{:+.2f}",
+                    "最高": "{:.2f}",
+                    "最低": "{:.2f}",
+                }).applymap(
+                    lambda x: 'color: green' if isinstance(x, str) and '+' in x else ('color: red' if isinstance(x, str) and '-' in x else ''),
+                    subset=["涨跌幅"]
+                ),
+                use_container_width=True
+            )
+            
+            # 涨跌幅柱状图
+            if len(quotes) > 0:
+                st.subheader("📊 涨跌幅分布")
+                changes = {s: q['change_pct'] for s, q in quotes.items()}
+                st.bar_chart(pd.Series(changes))
+    
+    else:
+        st.info("💡 请从上方选择股票，或前往【首页】查看热门板块")
 
 
 # ========== 页面2: AI选股 ==========
 elif page == "🎯 AI选股":
     st.header("🎯 AI智能选股")
     
-    # 快速选择
-    st.subheader("📋 选择候选股票")
+    st.info("🤖 AI将从全部A股中筛选优质股票，无需手动选择")
     
-    # 常用板块
-    tabs = st.tabs(["🔥 热门", "🏦 银行", "💊 医药", "💻 科技", "📝 自定义"])
-    
-    with tabs[0]:
-        hot_stocks = st.multiselect(
-            "选择热门股",
-            ["600519", "300750", "002594", "000651", "600276", "300059"],
-            default=["600519", "300750", "002594"],
-            key="hot"
+    # 评分设置
+    col1, col2 = st.columns(2)
+    with col1:
+        method = st.selectbox(
+            "🎯 评分方法",
+            ["comprehensive", "momentum", "trend"],
+            format_func=lambda x: {"comprehensive": "综合评分", "momentum": "动量优先", "trend": "趋势优先"}[x],
+            index=0
         )
+    with col2:
+        top_n = st.slider("📊 选择数量", 5, 50, 10)
     
-    with tabs[1]:
-        bank_stocks = st.multiselect(
-            "选择银行股",
-            ["601398", "600036", "601988", "600000"],
-            key="bank"
-        )
-    
-    with tabs[2]:
-        med_stocks = st.multiselect(
-            "选择医药股",
-            ["600436", "000513", "600276"],
-            key="med"
-        )
-    
-    with tabs[3]:
-        tech_stocks = st.multiselect(
-            "选择科技股",
-            ["002410", "300033", "300368"],
-            key="tech"
-        )
-    
-    with tabs[4]:
-        custom_stocks = st.text_input(
-            "自定义 (逗号分隔)",
-            value="",
-            key="custom"
-        )
-        if custom_stocks:
-            custom_list = [s.strip() for s in custom_stocks.split(",")]
-        else:
-            custom_list = []
-    
-    # 合并选择
-    all_stocks = hot_stocks + bank_stocks + med_stocks + tech_stocks + custom_list
-    all_stocks = list(set(all_stocks))  # 去重
-    
-    # 评分方法
-    st.subheader("🎯 AI评分")
-    method = st.radio(
-        "评分方法",
-        ["comprehensive", "momentum", "trend"],
-        horizontal=True,
-        index=0
-    )
-    method_names = {
-        "comprehensive": "综合评分",
-        "momentum": "动量优先",
-        "trend": "趋势优先"
-    }
-    st.caption(f"选择: {method_names.get(method, method)}")
+    # 筛选条件
+    st.subheader("🔧 筛选条件")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        min_price = st.number_input("最低价 (¥)", value=5.0, step=1.0)
+    with c2:
+        max_price = st.number_input("最高价 (¥)", value=1000.0, step=10.0)
+    with c3:
+        min_change = st.slider("最小涨跌幅 (%)", -10, 10, -5)
     
     # 开始选股
-    if st.button("🎯 开始AI选股", type="primary", use_container_width=True):
-        if all_stocks:
-            with st.spinner("🤖 AI正在分析股票..."):
-                picker = AIStockPicker()
-                results = picker.pick_by_ai_score(all_stocks, method=method)
+    if st.button("🚀 开始AI选股", type="primary", use_container_width=True):
+        with st.spinner("🤖 AI正在分析全部A股..."):
+            api = StockDataAPI(data_source="sina")
+            picker = AIStockPicker()
             
-            if results:
-                st.success(f"✅ AI分析完成! 找到 {len(results)} 只优质股票")
-                
-                # TOP 5
-                st.subheader("🏆 TOP 5 评分股票")
-                
-                for i, stock in enumerate(results[:5], 1):
-                    with st.expander(f"{i}. {stock['symbol']} (得分: {stock['score']:.1f})", expanded=i==1):
-                        col1, col2, col3, col4 = st.columns(4)
-                        col1.metric("当前价", f"¥{stock['price']:.2f}")
-                        col2.metric("涨跌", f"{stock['change_pct']:+.2f}%")
-                        col3.metric("MA5", f"¥{stock['ma5']:.2f}")
-                        col4.metric("MA20", f"¥{stock['ma20']:.2f}")
-                        
-                        # 因子
-                        f = stock['factors']
-                        st.progress(f['momentum']/100, text=f"动量 {f['momentum']:.0f}/100")
-                        st.progress(f['trend']/100, text=f"趋势 {f['trend']:.0f}/100")
-                        
-                        # 交易信号
-                        signal = picker.generate_trading_signal(stock['symbol'])
-                        emoji = "🟢" if signal['signal'].startswith('buy') else ("🔴" if signal['signal'].startswith('sell') else "🟡")
-                        st.markdown(f"{emoji} **{signal['signal'].upper()}** - {signal['reason']}")
-                        
-                        # 操作按钮
-                        c1, c2 = st.columns(2)
-                        if c1.button(f"➕ 买入 {stock['symbol']}", key=f"buy_{stock['symbol']}"):
-                            st.session_state[f"portfolio_{stock['symbol']}"] = {
-                                'shares': 100,
-                                'price': stock['price']
-                            }
-                            st.success(f"已添加到组合!")
-                        
-                        if c2.button(f"📊 分析 {stock['symbol']}", key=f"ana_{stock['symbol']}"):
-                            st.info(f"技术指标分析需要历史数据，请配置Tushare")
-            else:
-                st.warning("⚠️ 没有找到符合条件的股票")
+            # 获取全部A股
+            all_stocks = api.get_a_stock_list()
+            stock_symbols = [s['symbol'] for s in all_stocks]
+            
+            st.info(f"📊 正在分析 {len(stock_symbols)} 只股票...")
+            
+            # AI选股
+            results = picker.pick_by_ai_score(stock_symbols, method=method)
+            
+            # 筛选条件过滤
+            filtered_results = []
+            for stock in results:
+                if min_price <= stock['price'] <= max_price and stock['change_pct'] >= min_change:
+                    filtered_results.append(stock)
+            
+            # 限制数量
+            final_results = filtered_results[:top_n]
+        
+        if final_results:
+            st.success(f"✅ AI分析完成！选出 {len(final_results)} 只优质股票")
+            
+            # 显示结果
+            st.subheader("🏆 AI精选TOP股票")
+            
+            for i, stock in enumerate(final_results, 1):
+                with st.expander(f"{i}. {stock['symbol']} - {stock.get('name', '-')} (得分: {stock['score']:.1f})", expanded=i<=3):
+                    c1, c2, c3, c4 = st.columns(4)
+                    c1.metric("当前价", f"¥{stock['price']:.2f}")
+                    c2.metric("涨跌", f"{stock['change_pct']:+.2f}%")
+                    c3.metric("MA5", f"¥{stock.get('ma5', stock['price']):.2f}")
+                    c4.metric("MA20", f"¥{stock.get('ma20', stock['price']):.2f}")
+                    
+                    # 因子评分
+                    f = stock['factors']
+                    st.progress(f['momentum']/100, text=f"动量 {f['momentum']:.0f}/100")
+                    st.progress(f['trend']/100, text=f"趋势 {f['trend']:.0f}/100")
+                    
+                    # 交易信号
+                    signal = picker.generate_trading_signal(stock['symbol'])
+                    emoji = "🟢" if signal['signal'].startswith('buy') else ("🔴" if signal['signal'].startswith('sell') else "🟡")
+                    st.markdown(f"{emoji} **{signal['signal'].upper()}** - {signal['reason']}")
+            
+            # 导出选项
+            if st.button("📥 导出选股结果"):
+                export_df = pd.DataFrame(final_results)[['symbol', 'price', 'change_pct', 'score', 'factors']]
+                csv = export_df.to_csv(index=False)
+                st.download_button("📥 下载CSV", csv, "ai_selected_stocks.csv", "text/csv")
+            
         else:
-            st.error("请先选择股票!")
+            st.warning("⚠️ 未找到符合条件的股票，请调整筛选条件")
 
 
 # ========== 页面3: 组合管理 ==========
@@ -317,7 +385,6 @@ elif page == "💼 组合管理":
             use_container_width=True
         )
         
-        # 清仓按钮
         if st.button("🗑️ 清空所有持仓"):
             for symbol in list(portfolio.positions.keys()):
                 portfolio.remove_position(symbol)
@@ -352,7 +419,6 @@ elif page == "⚙️ 设置":
     
     st.subheader("📈 交易设置")
     
-    # 风险设置
     col1, col2 = st.columns(2)
     with col1:
         stop_loss = st.slider("止损比例 (%)", 5, 30, 10)
