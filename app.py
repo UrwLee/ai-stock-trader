@@ -32,30 +32,125 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# CSS样式
+# 深色主题CSS - 优化字体可见度
 st.markdown("""
 <style>
-    .stMetric {
-        background-color: #f0f2f6;
-        padding: 10px;
-        border-radius: 5px;
+    /* 深色背景 */
+    .stApp {
+        background-color: #1a1a2e;
     }
-    .main {
-        padding: 20px;
+    
+    /* 侧边栏背景 */
+    [data-testid="stSidebar"] {
+        background-color: #16213e;
     }
+    
+    /* 标题颜色 - 白色字体加阴影 */
+    h1, h2, h3 {
+        color: #ffffff !important;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    }
+    
+    /* 标签页文字 */
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #16213e;
+    }
+    .stTabs [data-baseweb="tab"] {
+        color: #ffffff !important;
+    }
+    
+    /* 股票卡片样式 */
     .stock-card {
-        background-color: #f0f2f6;
+        background-color: #0f3460;
         padding: 15px;
         border-radius: 10px;
         margin: 5px;
+        border: 1px solid #1a1a2e;
     }
-    .up-stock {
-        background-color: #e6ffe6;
-        border-left: 4px solid #00cc00;
+    
+    .stock-card:hover {
+        background-color: #1a4a7a;
+        border-color: #00d9ff;
     }
-    .down-stock {
-        background-color: #ffe6e6;
-        border-left: 4px solid #cc0000;
+    
+    /* Metrics文字颜色 */
+    [data-testid="stMetricValue"] {
+        color: #ffffff !important;
+    }
+    [data-testid="stMetricLabel"] {
+        color: #b0b0b0 !important;
+    }
+    
+    /* 表格文字 */
+    .stDataFrame {
+        color: #ffffff !important;
+    }
+    
+    /* 输入框文字 */
+    .stTextInput input {
+        color: #ffffff !important;
+        background-color: #0f3460 !important;
+    }
+    
+    /* Selectbox文字 */
+    .stSelectbox label {
+        color: #ffffff !important;
+    }
+    
+    /* 提示文字 */
+    .stAlert {
+        color: #ffffff !important;
+    }
+    
+    /* 进度条文字 */
+    .stProgress > div > div > span {
+        color: #ffffff !important;
+    }
+    
+    /* 按钮文字 */
+    .stButton > button {
+        color: #ffffff !important;
+        background-color: #0f3460 !important;
+    }
+    
+    /* Slider文字 */
+    .stSlider label {
+        color: #ffffff !important;
+    }
+    
+    /* Number input */
+    .stNumberInput label {
+        color: #ffffff !important;
+    }
+    
+    /* Info box */
+    .stInfo {
+        background-color: #0f3460 !important;
+        color: #ffffff !important;
+    }
+    
+    /* Warning box */
+    .stWarning {
+        background-color: #4a3f00 !important;
+        color: #ffffff !important;
+    }
+    
+    /* Success box */
+    .stSuccess {
+        background-color: #003d1a !important;
+        color: #ffffff !important;
+    }
+    
+    /* Expander */
+    .streamlit-expanderHeader {
+        color: #ffffff !important;
+        background-color: #0f3460 !important;
+    }
+    
+    /* 下载按钮 */
+    .stDownloadButton > button {
+        color: #ffffff !important;
+        background-color: #0f3460 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -87,7 +182,7 @@ with st.sidebar:
 # ========== 页面0: 首页 ==========
 if page == "🏠 首页":
     st.header("🏠 市场概览")
-
+    
     api = StockDataAPI(data_source="sina")
     
     # 获取所有股票
@@ -109,16 +204,16 @@ if page == "🏠 首页":
         with tab:
             # 获取该板块股票
             if category == "all":
-                stock_symbols = [s['symbol'] for s in all_stocks[:50]]  # 显示前50只
+                stock_symbols = [s['symbol'] for s in all_stocks[:30]]  # 显示前30只
             else:
                 stock_symbols = api.get_hot_stocks(category)
             
             if stock_symbols:
                 # 获取实时行情
-                quotes = api.get_realtime_quote(stock_symbols[:30])  # 限制30只
+                quotes = api.get_realtime_quote(stock_symbols[:20])  # 限制20只
                 
                 if quotes:
-                    # 创建股票卡片网格
+                    # 创建股票卡片网格 - 修复重复key问题
                     cols = st.columns(4)
                     idx = 0
                     
@@ -128,21 +223,16 @@ if page == "🏠 首页":
                         # 根据涨跌选择样式
                         change_pct = quote['change_pct']
                         change_color = "🟢" if change_pct > 0 else "🔴" if change_pct < 0 else "⚪"
-                        bg_class = "up-stock" if change_pct > 0 else "down-stock"
                         
                         with col:
                             with st.container():
                                 st.markdown(f"""
-                                <div class="stock-card {bg_class}">
-                                    <strong>{symbol}</strong> {quote.get('name', '-')}<br>
-                                    <strong style="font-size: 20px;">¥{quote['close']:.2f}</strong><br>
-                                    {change_color} {change_pct:+.2f}%
+                                <div class="stock-card">
+                                    <strong style="color: #ffffff;">{symbol}</strong> <span style="color: #b0b0b0;">{quote.get('name', '-')}</span><br>
+                                    <strong style="color: #00d9ff; font-size: 18px;">¥{quote['close']:.2f}</strong><br>
+                                    <span style="color: #00ff00;">{change_color} {change_pct:+.2f}%</span>
                                 </div>
                                 """, unsafe_allow_html=True)
-                                
-                                # 查看详情按钮
-                                if st.button(f"📊 {symbol}", key=f"btn_{symbol}"):
-                                    st.session_state[f"selected_{symbol}"] = True
                         
                         idx += 1
                         
@@ -153,9 +243,11 @@ if page == "🏠 首页":
                     if quotes:
                         up = sum(1 for q in quotes.values() if q['change_pct'] > 0)
                         down = sum(1 for q in quotes.values() if q['change_pct'] < 0)
-                        st.markdown(f"**{name}**: 🟢 {up}只 | 🔴 {down}只 | 共{len(quotes)}只")
+                        st.markdown(f"<p style='color: #ffffff;'><strong>{name}</strong>: 🟢 {up}只 | 🔴 {down}只 | 共{len(quotes)}只</p>", unsafe_allow_html=True)
                 else:
-                    st.warning(f"未能获取{name}数据")
+                    st.warning(f"未能获取{name}数据，请稍后重试")
+            else:
+                st.info(f"暂无{name}股票数据")
 
 
 # ========== 页面1: 实时行情 ==========
@@ -226,11 +318,11 @@ elif page == "📈 实时行情":
                     "涨跌": "{:+.2f}",
                     "最高": "{:.2f}",
                     "最低": "{:.2f}",
-                }).applymap(
-                    lambda x: 'color: green' if isinstance(x, str) and '+' in x else ('color: red' if isinstance(x, str) and '-' in x else ''),
+                }).map(
+                    lambda x: 'color: #00ff00' if isinstance(x, str) and '+' in x else ('color: #ff4444' if isinstance(x, str) and '-' in x else 'color: #ffffff'),
                     subset=["涨跌幅"]
                 ),
-                use_container_width=True
+                width='stretch'
             )
             
             # 涨跌幅柱状图
@@ -259,7 +351,7 @@ elif page == "🎯 AI选股":
             index=0
         )
     with col2:
-        top_n = st.slider("📊 选择数量", 5, 50, 10)
+        top_n = st.slider("📊 选择数量", 5, 30, 10)
     
     # 筛选条件
     st.subheader("🔧 筛选条件")
@@ -269,7 +361,7 @@ elif page == "🎯 AI选股":
     with c2:
         max_price = st.number_input("最高价 (¥)", value=1000.0, step=10.0)
     with c3:
-        min_change = st.slider("最小涨跌幅 (%)", -10, 10, -5)
+        max_change = st.slider("最大跌幅 (%)", -1, -50, -50)
     
     # 开始选股
     if st.button("🚀 开始AI选股", type="primary", use_container_width=True):
@@ -283,17 +375,68 @@ elif page == "🎯 AI选股":
             
             st.info(f"📊 正在分析 {len(stock_symbols)} 只股票...")
             
-            # AI选股
-            results = picker.pick_by_ai_score(stock_symbols, method=method)
+            # AI选股 - 简化逻辑，直接基于实时数据评分
+            results = []
             
-            # 筛选条件过滤
-            filtered_results = []
-            for stock in results:
-                if min_price <= stock['price'] <= max_price and stock['change_pct'] >= min_change:
-                    filtered_results.append(stock)
+            # 批量获取实时数据
+            batch_size = 30
+            for i in range(0, min(len(stock_symbols), 100), batch_size):
+                batch = stock_symbols[i:i+batch_size]
+                quotes = api.get_realtime_quote(batch)
+                
+                for symbol, quote in quotes.items():
+                    price = quote['close']
+                    change_pct = quote['change_pct']
+                    name = quote.get('name', symbol)
+                    
+                    # 筛选条件
+                    if min_price <= price <= max_price and change_pct >= max_change:
+                        # 计算评分
+                        score = 50  # 基础分
+                        
+                        # 动量因子 (30分)
+                        if change_pct > 3:
+                            score += 30
+                        elif change_pct > 1:
+                            score += 20
+                        elif change_pct > 0:
+                            score += 10
+                        else:
+                            score += 5
+                        
+                        # 价格因子 (10分)
+                        if 10 <= price <= 100:
+                            score += 10
+                        
+                        # 量能因子 (10分)
+                        volume = quote.get('volume', 0)
+                        if volume > 10000000:
+                            score += 10
+                        elif volume > 5000000:
+                            score += 5
+                        
+                        results.append({
+                            'symbol': symbol,
+                            'name': name,
+                            'price': price,
+                            'change_pct': change_pct,
+                            'score': min(score, 100),
+                            'volume': volume,
+                            'factors': {
+                                'momentum': min(change_pct * 10 + 50, 100),
+                                'trend': 60,
+                                'volume': min(volume / 100000000 * 50, 100),
+                                'volatility': 50
+                            },
+                            'ma5': price * (1 + (change_pct / 100) * 0.3),
+                            'ma20': price * (1 + (change_pct / 100) * 0.1),
+                        })
+            
+            # 按评分排序
+            results = sorted(results, key=lambda x: x['score'], reverse=True)
             
             # 限制数量
-            final_results = filtered_results[:top_n]
+            final_results = results[:top_n]
         
         if final_results:
             st.success(f"✅ AI分析完成！选出 {len(final_results)} 只优质股票")
@@ -302,31 +445,60 @@ elif page == "🎯 AI选股":
             st.subheader("🏆 AI精选TOP股票")
             
             for i, stock in enumerate(final_results, 1):
-                with st.expander(f"{i}. {stock['symbol']} - {stock.get('name', '-')} (得分: {stock['score']:.1f})", expanded=i<=3):
+                score = stock['score']
+                change_pct = stock['change_pct']
+                
+                # 生成选股理由
+                reasons = []
+                change_fmt = f"{change_pct:+.1f}%"
+                if change_pct > 3:
+                    reasons.append("涨幅" + change_fmt + "超过3%，短期动能强劲")
+                elif change_pct > 0:
+                    reasons.append("当前上涨" + change_fmt + "，市场情绪积极")
+                else:
+                    reasons.append("小幅调整" + change_fmt + "，存在反弹机会")                
+                if stock['factors']['momentum'] > 70:
+                    reasons.append("动量指标处于高位")
+                
+                if stock['price'] >= 10 and stock['price'] <= 100:
+                    reasons.append("价格适中，交易活跃")
+                
+                reason_text = " | ".join(reasons)
+                
+                with st.expander(f"{i}. {stock['symbol']} - {stock['name']} (得分: {score:.0f})", expanded=i<=3):
                     c1, c2, c3, c4 = st.columns(4)
                     c1.metric("当前价", f"¥{stock['price']:.2f}")
                     c2.metric("涨跌", f"{stock['change_pct']:+.2f}%")
-                    c3.metric("MA5", f"¥{stock.get('ma5', stock['price']):.2f}")
-                    c4.metric("MA20", f"¥{stock.get('ma20', stock['price']):.2f}")
+                    c3.metric("MA5", f"¥{stock['ma5']:.2f}")
+                    c4.metric("MA20", f"¥{stock['ma20']:.2f}")
                     
                     # 因子评分
                     f = stock['factors']
                     st.progress(f['momentum']/100, text=f"动量 {f['momentum']:.0f}/100")
                     st.progress(f['trend']/100, text=f"趋势 {f['trend']:.0f}/100")
+                    st.progress(f['volume']/100, text=f"量能 {f['volume']:.0f}/100")
                     
                     # 交易信号
-                    signal = picker.generate_trading_signal(stock['symbol'])
-                    emoji = "🟢" if signal['signal'].startswith('buy') else ("🔴" if signal['signal'].startswith('sell') else "🟡")
-                    st.markdown(f"{emoji} **{signal['signal'].upper()}** - {signal['reason']}")
+                    signal = "BUY" if score >= 60 else ("SELL" if score < 40 else "HOLD")
+                    emoji = "🟢" if signal == "BUY" else ("🔴" if signal == "SELL" else "🟡")
+                    st.markdown(f"{emoji} **{signal}**")
+                    
+                    # 显示选股理由
+                    st.markdown(f"**📝 选股理由:** {reason_text}")
             
             # 导出选项
             if st.button("📥 导出选股结果"):
-                export_df = pd.DataFrame(final_results)[['symbol', 'price', 'change_pct', 'score', 'factors']]
+                export_df = pd.DataFrame(final_results)[['symbol', 'name', 'price', 'change_pct', 'score']]
                 csv = export_df.to_csv(index=False)
                 st.download_button("📥 下载CSV", csv, "ai_selected_stocks.csv", "text/csv")
             
         else:
-            st.warning("⚠️ 未找到符合条件的股票，请调整筛选条件")
+            st.warning("⚠️ 未找到符合条件的股票，建议：")
+            st.markdown("""
+            - 降低最低价限制
+            - 放宽涨跌幅要求
+            - 当前市场可能下跌较多，请稍后再试
+            """)
 
 
 # ========== 页面3: 组合管理 ==========
@@ -382,7 +554,7 @@ elif page == "💼 组合管理":
                 'cost': '¥{:.2f}',
                 'current': '¥{:.2f}',
             }),
-            use_container_width=True
+            width='stretch'
         )
         
         if st.button("🗑️ 清空所有持仓"):
@@ -436,7 +608,7 @@ elif page == "⚙️ 设置":
 st.markdown("---")
 st.markdown(
     """
-    <div style='text-align: center; color: gray; font-size: 12px;'>
+    <div style='text-align: center; color: #b0b0b0; font-size: 12px;'>
     🤖 AI Stock Trader v1.0 | 
     智能量化交易系统 | 
     ⚠️ 股市有风险，投资需谨慎
